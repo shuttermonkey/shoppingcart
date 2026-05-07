@@ -13,7 +13,7 @@ $rootPath = root_path();
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Shopping List Admin</title>
+    <title>Shopping List Admin Dev</title>
     <link rel="stylesheet" href="<?= htmlspecialchars($rootPath . '/assets/app.css', ENT_QUOTES, 'UTF-8') ?>">
 </head>
 <body class="admin-body" data-admin-key="<?= htmlspecialchars((string) $key, ENT_QUOTES, 'UTF-8') ?>">
