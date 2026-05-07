@@ -1,5 +1,5 @@
 data/app.sqlite
-config.local.php
 config.php
+config.local.php
 /XXX_specs
 
