@@ -1,0 +1,10 @@
+<?php
+
+// Rename file to `config.php` with your real `base_url` and a long random `admin_secret`.
+
+return [
+    'admin_secret' => 'admin_secret',
+    'db_path' => __DIR__ . '/data/app.sqlite',
+    'base_url' => 'http://localhost:8888/',
+    'max_users' => 5,
+];
