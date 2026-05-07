@@ -86,6 +86,7 @@ function initialize_schema(PDO $pdo): void
             store TEXT NOT NULL,
             added_by TEXT NOT NULL,
             added_at INTEGER NOT NULL,
+            updated_at INTEGER,
             completed_by TEXT,
             completed_at INTEGER,
             deleted INTEGER DEFAULT 0,
@@ -96,6 +97,7 @@ function initialize_schema(PDO $pdo): void
     );
 
     migrate_auth_tokens($pdo);
+    migrate_items_updated_at($pdo);
 }
 
 function migrate_auth_tokens(PDO $pdo): void
@@ -119,6 +121,18 @@ function migrate_auth_tokens(PDO $pdo): void
             ':active' => (int) $row['active'],
         ]);
     }
+}
+
+function migrate_items_updated_at(PDO $pdo): void
+{
+    $columns = $pdo->query('PRAGMA table_info(items)')->fetchAll();
+    foreach ($columns as $column) {
+        if (($column['name'] ?? null) === 'updated_at') {
+            return;
+        }
+    }
+
+    $pdo->exec('ALTER TABLE items ADD COLUMN updated_at INTEGER');
 }
 
 function now_ts(): int
@@ -255,6 +269,16 @@ function validate_store(string $store): string
     return $store;
 }
 
+function validate_item_text(string $text): string
+{
+    $normalized = trim($text);
+    if ($normalized === '') {
+        error_json('Item text is required.', 422);
+    }
+
+    return substr($normalized, 0, 140);
+}
+
 function format_user_row(array $row): array
 {
     return [
@@ -308,6 +332,7 @@ function format_item_row(array $row, array $users): array
         'added_by_name' => $addedBy['name'] ?? 'Unknown',
         'added_by_color' => $addedBy['color'] ?? '#6f7b80',
         'added_at' => (int) $row['added_at'],
+        'updated_at' => $row['updated_at'] !== null ? (int) $row['updated_at'] : null,
         'completed_by' => $row['completed_by'],
         'completed_by_name' => $completedBy['name'] ?? null,
         'completed_at' => $row['completed_at'] !== null ? (int) $row['completed_at'] : null,
@@ -343,7 +368,7 @@ function fetch_items_payload(PDO $pdo, ?string $storeFilter = null): array
             'generated_at' => now_ts(),
             'last_modified' => last_modified_ts($pdo),
             'stores' => STORE_DEFS,
-            'completed_archive_after_seconds' => 2 * 24 * 60 * 60,
+            'completed_archive_after_seconds' => 24 * 60 * 60,
         ],
     ];
 }
@@ -353,6 +378,7 @@ function last_modified_ts(PDO $pdo): int
     $userMax = (int) $pdo->query('SELECT COALESCE(MAX(created_at), 0) FROM users')->fetchColumn();
     $itemMax = (int) $pdo->query('SELECT COALESCE(MAX(CASE
         WHEN deleted_at IS NOT NULL THEN deleted_at
+        WHEN updated_at IS NOT NULL THEN updated_at
         WHEN completed_at IS NOT NULL THEN completed_at
         ELSE added_at
     END), 0) FROM items')->fetchColumn();

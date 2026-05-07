@@ -19,19 +19,15 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     $user = require_user();
     $input = json_input();
-    $text = trim((string) ($input['text'] ?? ''));
+    $text = validate_item_text((string) ($input['text'] ?? ''));
     $store = validate_store((string) ($input['store'] ?? ''));
 
-    if ($text === '') {
-        error_json('Item text is required.', 422);
-    }
-
     $stmt = $pdo->prepare(
-        'INSERT INTO items (text, store, added_by, added_at, completed_by, completed_at, deleted, deleted_at)
-         VALUES (:text, :store, :added_by, :added_at, NULL, NULL, 0, NULL)'
+        'INSERT INTO items (text, store, added_by, added_at, updated_at, completed_by, completed_at, deleted, deleted_at)
+         VALUES (:text, :store, :added_by, :added_at, NULL, NULL, NULL, 0, NULL)'
     );
     $stmt->execute([
-        ':text' => substr($text, 0, 140),
+        ':text' => $text,
         ':store' => $store,
         ':added_by' => $user['id'],
         ':added_at' => now_ts(),
@@ -79,10 +75,24 @@ if ($method === 'PATCH') {
     } elseif ($action === 'undo_delete') {
         $stmt = $pdo->prepare('UPDATE items SET deleted = 0, deleted_at = NULL WHERE id = :id');
         $stmt->execute([':id' => $itemId]);
+    } elseif ($action === 'edit') {
+        $text = validate_item_text((string) ($input['text'] ?? $item['text']));
+        $store = validate_store((string) ($input['store'] ?? $item['store']));
+        $stmt = $pdo->prepare(
+            'UPDATE items
+             SET text = :text, store = :store, updated_at = :updated_at
+             WHERE id = :id'
+        );
+        $stmt->execute([
+            ':text' => $text,
+            ':store' => $store,
+            ':updated_at' => $timestamp,
+            ':id' => $itemId,
+        ]);
     } elseif ($action === 'readd') {
         $stmt = $pdo->prepare(
-            'INSERT INTO items (text, store, added_by, added_at, completed_by, completed_at, deleted, deleted_at)
-             VALUES (:text, :store, :added_by, :added_at, NULL, NULL, 0, NULL)'
+            'INSERT INTO items (text, store, added_by, added_at, updated_at, completed_by, completed_at, deleted, deleted_at)
+             VALUES (:text, :store, :added_by, :added_at, NULL, NULL, NULL, 0, NULL)'
         );
         $stmt->execute([
             ':text' => $item['text'],

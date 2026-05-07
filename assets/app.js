@@ -12,7 +12,7 @@ const state = {
   filter: localStorage.getItem(STORAGE_KEYS.filter) || 'all',
   tab: 'active',
   detailItemId: null,
-  revealedItemId: null,
+  editingItemId: null,
   sync: {
     lastSyncAt: 0,
     isSyncing: false,
@@ -26,7 +26,7 @@ const state = {
 const stores = window.APP_BOOT.stores;
 const bootToken = window.APP_BOOT.bootToken || '';
 const rootPath = window.APP_BOOT.rootPath || '';
-const twoDaysSeconds = 2 * 24 * 60 * 60;
+const completedRetentionSeconds = 24 * 60 * 60;
 
 const ui = {
   menuButton: document.getElementById('menuButton'),
@@ -306,7 +306,7 @@ function getActiveItems() {
   return state.items.filter((item) => {
     if (state.filter !== 'all' && item.store !== state.filter) return false;
     if (!item.completed_at) return true;
-    return now - item.completed_at < twoDaysSeconds;
+    return now - item.completed_at < completedRetentionSeconds;
   });
 }
 
@@ -315,7 +315,7 @@ function getPurchasedItems() {
   return state.items
     .filter((item) => {
       if (state.filter !== 'all' && item.store !== state.filter) return false;
-      return item.completed_at && now - item.completed_at >= twoDaysSeconds;
+      return item.completed_at && now - item.completed_at >= completedRetentionSeconds;
     })
     .sort((a, b) => (b.completed_at || 0) - (a.completed_at || 0));
 }
@@ -349,13 +349,8 @@ function renderItem(item, showStore) {
   const store = stores[item.store];
   const complete = Boolean(item.completed_at);
   const detailOpen = state.detailItemId === item.id;
-  const canReadd = state.tab === 'purchased';
   return `
-    <article class="item-row ${state.revealedItemId === item.id ? 'is-revealed' : ''}" data-item-id="${item.id}">
-      <div class="item-actions">
-        ${canReadd ? '<button type="button" class="mini-button" data-action="readd">Re-add</button>' : ''}
-        <button type="button" class="mini-button mini-button--danger" data-action="delete">Delete</button>
-      </div>
+    <article class="item-row" data-item-id="${item.id}">
       <div class="item-main">
         <button type="button" class="item-check ${complete ? 'is-complete' : ''}" data-action="toggle-complete" aria-label="${complete ? 'Mark active' : 'Mark complete'}">
           ${complete ? '&#10003;' : ''}
@@ -375,70 +370,57 @@ function renderItem(item, showStore) {
 }
 
 function renderItemDetail(item, store) {
+  const isEditing = state.editingItemId === item.id;
+  const canReadd = state.tab === 'purchased';
   return `
     <div class="item-detail">
       <div><strong>${escapeHtml(item.text)}</strong></div>
       <div>Store: ${store.label}</div>
       <div>Added by ${escapeHtml(item.added_by_name)} on ${formatDateTime(item.added_at)}</div>
+      ${item.updated_at ? `<div>Last edited ${formatDateTime(item.updated_at)}</div>` : ''}
       ${item.completed_at ? `<div>Completed by ${escapeHtml(item.completed_by_name || 'Unknown')} on ${formatDateTime(item.completed_at)}</div>` : ''}
+      ${isEditing ? renderEditForm(item) : `
+        <div class="item-detail-actions">
+          ${canReadd ? '<button type="button" class="detail-action" data-action="readd">Re-add</button>' : ''}
+          <button type="button" class="detail-action" data-action="edit">Edit</button>
+          <button type="button" class="detail-action detail-action--danger" data-action="delete">Delete</button>
+        </div>
+      `}
     </div>
+  `;
+}
+
+function renderEditForm(item) {
+  const options = Object.entries(stores)
+    .map(([key, store]) => `
+      <option value="${key}" ${key === item.store ? 'selected' : ''}>${escapeHtml(store.label)}</option>
+    `)
+    .join('');
+
+  return `
+    <form class="item-edit-form" data-item-id="${item.id}">
+      <div class="item-edit-fields">
+        <label class="sr-only" for="edit-item-text-${item.id}">Item</label>
+        <input id="edit-item-text-${item.id}" type="text" name="text" maxlength="140" value="${escapeHtml(item.text)}" required placeholder="Add an item">
+        <label class="sr-only" for="edit-item-store-${item.id}">Store</label>
+        <select id="edit-item-store-${item.id}" name="store">${options}</select>
+      </div>
+      <div class="item-edit-actions">
+        <button type="submit" class="detail-action">Save</button>
+        <button type="button" class="detail-action detail-action--secondary" data-action="cancel-edit">Cancel</button>
+      </div>
+    </form>
   `;
 }
 
 function wireListEvents() {
   [...ui.listRoot.querySelectorAll('.item-row')].forEach((row) => {
     const itemId = Number(row.dataset.itemId);
-    let startX = 0;
-    let startY = 0;
-    let currentX = 0;
-    let swiping = false;
-
-    row.addEventListener('pointerdown', (event) => {
-      if (event.target.closest('[data-action], .item-check')) return;
-      startX = event.clientX;
-      startY = event.clientY;
-      currentX = event.clientX;
-      swiping = false;
-    });
-
-    row.addEventListener('pointermove', (event) => {
-      if (!startX) return;
-      currentX = event.clientX;
-      const deltaX = currentX - startX;
-      const deltaY = event.clientY - startY;
-      if (Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY)) {
-        swiping = true;
-      }
-    });
-
-    row.addEventListener('pointerup', (event) => {
-      if (event.target.closest('[data-action], .item-check')) {
-        resetSwipeTracking();
-        return;
-      }
-
-      const deltaX = currentX - startX;
-      if (swiping) {
-        if (deltaX < -24) {
-          state.revealedItemId = itemId;
-        } else if (deltaX > 18 && state.revealedItemId === itemId) {
-          state.revealedItemId = null;
-        }
-        render();
-      } else {
-        state.revealedItemId = null;
-        state.detailItemId = state.detailItemId === itemId ? null : itemId;
-        render();
-      }
-
-      resetSwipeTracking();
-    });
-
-    row.addEventListener('pointercancel', resetSwipeTracking);
-    row.addEventListener('pointerleave', () => {
-      if (!swiping) {
-        resetSwipeTracking();
-      }
+    row.addEventListener('click', (event) => {
+      if (isInteractiveRowTarget(event.target)) return;
+      state.editingItemId = null;
+      state.detailItemId = state.detailItemId === itemId ? null : itemId;
+      render();
     });
 
     row.querySelectorAll('[data-action]').forEach((button) => {
@@ -446,6 +428,10 @@ function wireListEvents() {
       button.addEventListener('click', () => {
         if (action === 'toggle-complete') {
           toggleComplete(itemId);
+        } else if (action === 'edit') {
+          startEditingItem(itemId);
+        } else if (action === 'cancel-edit') {
+          stopEditingItem();
         } else if (action === 'delete') {
           removeItem(itemId);
         } else if (action === 'readd') {
@@ -454,13 +440,28 @@ function wireListEvents() {
       });
     });
 
-    function resetSwipeTracking() {
-      startX = 0;
-      startY = 0;
-      currentX = 0;
-      swiping = false;
+    const editForm = row.querySelector('.item-edit-form');
+    if (editForm) {
+      editForm.addEventListener('submit', (event) => {
+        onEditItem(event, itemId);
+      });
     }
   });
+}
+
+function isInteractiveRowTarget(target) {
+  return Boolean(target instanceof Element && target.closest('button, input, select, textarea, label, form, [data-action], .item-check'));
+}
+
+function startEditingItem(itemId) {
+  state.detailItemId = itemId;
+  state.editingItemId = itemId;
+  render();
+}
+
+function stopEditingItem() {
+  state.editingItemId = null;
+  render();
 }
 
 async function onAddItem(event) {
@@ -538,7 +539,12 @@ async function removeItem(itemId) {
   const item = state.items.find((entry) => entry.id === itemId);
   if (!item) return;
 
-  state.revealedItemId = null;
+  if (state.detailItemId === itemId) {
+    state.detailItemId = null;
+  }
+  if (state.editingItemId === itemId) {
+    state.editingItemId = null;
+  }
   state.items = state.items.filter((entry) => entry.id !== itemId);
   render();
 
@@ -572,7 +578,6 @@ async function readdItem(itemId) {
       method: 'PATCH',
       body: { id: itemId, action: 'readd' },
     });
-    state.revealedItemId = null;
     state.items.unshift(response.item);
     state.tab = 'active';
     tabButtons.forEach((node) => node.classList.toggle('is-active', node.dataset.tab === 'active'));
@@ -581,6 +586,47 @@ async function readdItem(itemId) {
     toast('Item added back to active list.');
   } catch (error) {
     toast(error.message || 'Could not re-add item.');
+  }
+}
+
+async function onEditItem(event, itemId) {
+  event.preventDefault();
+  if (state.offline) return;
+
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+  const text = String(formData.get('text') || '').trim();
+  const store = String(formData.get('store') || '');
+  const index = state.items.findIndex((item) => item.id === itemId);
+  if (index === -1) return;
+  if (!text) {
+    toast('Item text is required.');
+    return;
+  }
+
+  const original = { ...state.items[index] };
+  state.items[index] = {
+    ...state.items[index],
+    text,
+    store,
+    updated_at: Math.floor(Date.now() / 1000),
+  };
+  render();
+
+  try {
+    const response = await api('/api/items.php', {
+      method: 'PATCH',
+      body: { id: itemId, action: 'edit', text, store },
+    });
+    state.items[index] = response.item;
+    state.lastFingerprint = response.last_modified;
+    state.editingItemId = null;
+    cacheSnapshot();
+    render();
+  } catch (error) {
+    state.items[index] = original;
+    render();
+    toast(error.message || 'Could not save item.');
   }
 }
 

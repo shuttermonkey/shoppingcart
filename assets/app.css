@@ -335,29 +335,10 @@ input {
 }
 
 .item-row {
-    position: relative;
     background: transparent;
     border-top: 1px solid var(--line);
     padding: 6px 14px;
     overflow: hidden;
-    touch-action: pan-y;
-}
-
-.item-row.is-revealed .item-main {
-    transform: translateX(-80px);
-}
-
-.item-actions {
-    position: absolute;
-    top: 4px;
-    right: 14px;
-    bottom: 4px;
-    width: 80px;
-    display: grid;
-    gap: 6px;
-    align-content: center;
-    justify-items: stretch;
-    z-index: 1;
 }
 
 .item-main {
@@ -466,6 +447,76 @@ input {
     font-size: 0.82rem;
     display: grid;
     gap: 5px;
+}
+
+.detail-action {
+    min-height: 36px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-strong);
+    color: var(--text);
+    justify-self: start;
+}
+
+.detail-action--danger {
+    color: var(--danger);
+}
+
+.item-detail-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.detail-action--secondary {
+    background: transparent;
+    color: var(--muted);
+}
+
+.item-edit-form {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.item-edit-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.item-edit-form input,
+.item-edit-form select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--surface-strong);
+    color: var(--text);
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.item-edit-form select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 38px;
+}
+
+.item-edit-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.item-edit-actions .detail-action {
+    margin-top: 0;
 }
 
 .empty-state {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shopping-list-shell-v2';
+const CACHE_NAME = 'shopping-list-shell-v3';
 const SHELL_FILES = [
   './',
   './index.php',
