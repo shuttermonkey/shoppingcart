@@ -10,6 +10,7 @@ const state = {
   usersById: {},
   items: [],
   filter: localStorage.getItem(STORAGE_KEYS.filter) || 'all',
+  composerStore: null,
   tab: 'active',
   detailItemId: null,
   editingItemId: null,
@@ -106,6 +107,9 @@ function cacheSnapshot() {
 
 function bindEvents() {
   ui.addForm.addEventListener('submit', onAddItem);
+  ui.storeSelect.addEventListener('change', () => {
+    state.composerStore = ui.storeSelect.value;
+  });
   ui.shareButton.addEventListener('click', onShare);
   ui.menuButton.addEventListener('click', toggleMenu);
   ui.importCsvButton.addEventListener('click', () => {
@@ -155,13 +159,18 @@ function bindEvents() {
 }
 
 function populateStoreSelect() {
+  const selectedStore = state.composerStore || ui.storeSelect.value;
   ui.storeSelect.innerHTML = Object.entries(stores)
     .map(([key, store]) => `<option value="${key}">${store.short}</option>`)
     .join('');
 
-  if (state.filter !== 'all' && stores[state.filter]) {
+  if (selectedStore && stores[selectedStore]) {
+    ui.storeSelect.value = selectedStore;
+  } else if (state.filter !== 'all' && stores[state.filter]) {
     ui.storeSelect.value = state.filter;
   }
+
+  state.composerStore = ui.storeSelect.value;
 }
 
 function renderFilters() {
@@ -179,6 +188,7 @@ function renderFilters() {
       localStorage.setItem(STORAGE_KEYS.filter, state.filter);
       if (state.filter !== 'all') {
         ui.storeSelect.value = state.filter;
+        state.composerStore = state.filter;
       }
       renderFilters();
       render();
