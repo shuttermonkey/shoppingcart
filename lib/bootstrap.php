@@ -10,7 +10,7 @@ const STORE_DEFS = [
     'wegmans' => ['label' => 'Wegmans', 'short' => 'Wegmans', 'color' => '#7d6f99'],
     'palmers' => ['label' => 'Palmers', 'short' => 'Palmers', 'color' => '#08c076'],
     'shoprite' => ['label' => 'ShopRite', 'short' => 'ShopRite', 'color' => '#a65f6c'],
-    'stews' => ['label' => 'StewLeonards', 'short' => 'Stews', 'color' => '#fd00be'],
+    'stews' => ['label' => "Stew Leonard's", 'short' => 'Stews', 'color' => '#fd00be'],
     'other' => ['label' => 'Other', 'short' => 'Other', 'color' => '#6f7b80'],
 ];
 
