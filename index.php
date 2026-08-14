@@ -9,6 +9,7 @@ if (isset($_GET['u']) && is_string($_GET['u'])) {
     $bootToken = $_GET['u'];
 }
 $rootPath = root_path();
+$assetVersion = '20260814-previously-purchased-v2';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,7 +22,7 @@ $rootPath = root_path();
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Shopping List">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="stylesheet" href="<?= htmlspecialchars($rootPath . '/assets/app.css', ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars($rootPath . '/assets/app.css?v=' . $assetVersion, ENT_QUOTES, 'UTF-8') ?>">
     <link rel="apple-touch-icon" href="<?= htmlspecialchars($rootPath . '/assets/icon.png') ?>">
 </head>
 <body data-boot-token="<?= htmlspecialchars($bootToken, ENT_QUOTES, 'UTF-8') ?>">
@@ -97,6 +98,6 @@ $rootPath = root_path();
             rootPath: <?= json_encode($rootPath, JSON_UNESCAPED_SLASHES) ?>,
         };
     </script>
-    <script src="<?= htmlspecialchars($rootPath . '/assets/app.js', ENT_QUOTES, 'UTF-8') ?>" defer></script>
+    <script src="<?= htmlspecialchars($rootPath . '/assets/app.js?v=' . $assetVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
 </body>
 </html>
