@@ -53,6 +53,7 @@ if ($method === 'PATCH') {
     }
 
     $timestamp = now_ts();
+    $deletedItemIds = [];
 
     if ($action === 'toggle_complete') {
         $isCompleted = $item['completed_at'] !== null;
@@ -66,6 +67,9 @@ if ($method === 'PATCH') {
             ':completed_at' => $isCompleted ? null : $timestamp,
             ':id' => $itemId,
         ]);
+        if (!$isCompleted) {
+            $deletedItemIds = delete_duplicate_completed_items($pdo, $itemId, $item['text'], $item['store'], $timestamp);
+        }
     } elseif ($action === 'delete') {
         $stmt = $pdo->prepare('UPDATE items SET deleted = 1, deleted_at = :deleted_at WHERE id = :id');
         $stmt->execute([
@@ -114,6 +118,7 @@ if ($method === 'PATCH') {
     json_response([
         'ok' => true,
         'item' => format_item_row($updated, list_users_indexed($pdo)),
+        'deleted_item_ids' => $deletedItemIds,
         'last_modified' => last_modified_ts($pdo),
     ]);
 }

@@ -374,6 +374,37 @@ function fetch_items_payload(PDO $pdo, ?string $storeFilter = null): array
     ];
 }
 
+function delete_duplicate_completed_items(PDO $pdo, int $itemId, string $text, string $store, int $timestamp): array
+{
+    $stmt = $pdo->prepare(
+        'SELECT id
+         FROM items
+         WHERE id != :id
+           AND deleted = 0
+           AND completed_at IS NOT NULL
+           AND store = :store
+           AND LOWER(TRIM(text)) = LOWER(TRIM(:text))'
+    );
+    $stmt->execute([
+        ':id' => $itemId,
+        ':store' => $store,
+        ':text' => $text,
+    ]);
+    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+    if ($ids === []) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $deleteStmt = $pdo->prepare(
+        "UPDATE items SET deleted = 1, deleted_at = ? WHERE id IN ({$placeholders})"
+    );
+    $deleteStmt->execute(array_merge([$timestamp], $ids));
+
+    return $ids;
+}
+
 function last_modified_ts(PDO $pdo): int
 {
     $userMax = (int) $pdo->query('SELECT COALESCE(MAX(created_at), 0) FROM users')->fetchColumn();

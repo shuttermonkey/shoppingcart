@@ -2,4 +2,4 @@ data/app.sqlite
 config.php
 config.local.php
 /XXX_specs
-
+.DS_Store

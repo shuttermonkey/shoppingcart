@@ -322,12 +322,42 @@ function getActiveItems() {
 
 function getPurchasedItems() {
   const now = Math.floor(Date.now() / 1000);
-  return state.items
+  const purchasedItems = state.items
     .filter((item) => {
       if (state.filter !== 'all' && item.store !== state.filter) return false;
       return item.completed_at && now - item.completed_at >= completedRetentionSeconds;
     })
     .sort((a, b) => (b.completed_at || 0) - (a.completed_at || 0));
+
+  return uniqueItemsByTextAndStore(purchasedItems)
+    .sort(compareItemsAlphabetically);
+}
+
+function uniqueItemsByTextAndStore(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = `${item.store}:${normalizeItemText(item.text)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function compareItemsAlphabetically(a, b) {
+  const textComparison = a.text.localeCompare(b.text, undefined, {
+    sensitivity: 'base',
+    numeric: true,
+  });
+  if (textComparison !== 0) return textComparison;
+
+  return stores[a.store].label.localeCompare(stores[b.store].label, undefined, {
+    sensitivity: 'base',
+    numeric: true,
+  });
+}
+
+function normalizeItemText(text) {
+  return text.trim().toLocaleLowerCase();
 }
 
 function renderGroupedItems(items) {
@@ -534,6 +564,10 @@ async function toggleComplete(itemId) {
       body: { id: itemId, action: 'toggle_complete' },
     });
     state.items[index] = response.item;
+    if (Array.isArray(response.deleted_item_ids) && response.deleted_item_ids.length > 0) {
+      const deletedItemIds = new Set(response.deleted_item_ids);
+      state.items = state.items.filter((item) => !deletedItemIds.has(item.id));
+    }
     state.lastFingerprint = response.last_modified;
     cacheSnapshot();
     render();
